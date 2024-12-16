@@ -1,5 +1,15 @@
 const std = @import("std");
 
+pub fn read_file(filename: []const u8) ![]const u8 {
+    var file = try std.fs.cwd().openFile(filename, .{}); // open the file
+    defer file.close(); // close the file later
+
+    const contents = try file.reader().readAllAlloc(std.heap.page_allocator, std.math.maxInt(usize)); // read the file
+    defer std.heap.page_allocator.free(contents); // free the memory later
+
+    return contents; // return the contents
+}
+
 pub fn main() !void {
     // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
     std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
@@ -16,9 +26,9 @@ pub fn main() !void {
     try bw.flush(); // don't forget to flush!
 }
 
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
+test "read_file function test" {
+    const contents = try read_file("src/main.zig");
+    try std.testing.expect(contents.len > 0);
+    std.debug.print("Contents read\n", .{});
 }
+
