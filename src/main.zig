@@ -1,34 +1,39 @@
 const std = @import("std");
 
-pub fn read_file(filename: []const u8) ![]const u8 {
-    var file = try std.fs.cwd().openFile(filename, .{}); // open the file
-    defer file.close(); // close the file later
+// stdout
+const stdout_file = std.io.getStdOut().writer();
+var stdout_writer = std.io.bufferedWriter(stdout_file);
+const stdout = stdout_writer.writer();
 
-    const contents = try file.reader().readAllAlloc(std.heap.page_allocator, std.math.maxInt(usize)); // read the file
-    defer std.heap.page_allocator.free(contents); // free the memory later
+// stderr
+const stderr_file = std.io.getStdErr().writer();
+var stderr_writer = std.io.bufferedWriter(stderr_file);
+const stderr = stderr_writer.writer();
 
-    return contents; // return the contents
-}
+// stdin
+const stdin = std.io.getStdIn().reader();
+
+// allocator
+const allocator = std.heap.page_allocator;
+
+// constants
+const max_int = std.math.maxInt(usize);
+const pwd = std.fs.cwd();
+
+pub fn ask(question: []const u8) ?[]u8 {
+    stderr.print("{s}", .{question}) catch unreachable;
+    stderr_writer.flush() catch unreachable;
+
+    const answer: ?[]u8 = stdin.readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(usize)) catch unreachable;
+    return answer;
+} // Cannot test because of `zig build test` output interference
 
 pub fn main() !void {
-    // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+    const args = try std.process.argsAlloc(allocator);
+    defer allocator.free(args);
 
-    // stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
-
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
-
-    try bw.flush(); // don't forget to flush!
+    const name = ask("What is your name? ").?;
+    defer allocator.free(name);
+    stdout.print("Hello, {s}!\n", .{name}) catch unreachable;
+    stdout_writer.flush() catch unreachable;
 }
-
-test "read_file function test" {
-    const contents = try read_file("src/main.zig");
-    try std.testing.expect(contents.len > 0);
-    std.debug.print("Contents read\n", .{});
-}
-
