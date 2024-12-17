@@ -1,5 +1,5 @@
 { pkgs ? import <nixpkgs> {} }:
 
 pkgs.mkShell {
-  buildInputs = with pkgs; [ zig ];
+  buildInputs = with pkgs; [ zig gdb ];
 }
